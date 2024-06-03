@@ -66,13 +66,17 @@ pub fn handle_connection(mut stream: std::net::TcpStream) {
             let content_encoding = headers.iter().find(|header| header.starts_with("Accept-Encoding"));
             status_line = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", path.len(), path);
             if content_encoding.is_some() {
-                let encoding = content_encoding.unwrap().to_string().split_whitespace().collect::<Vec<&str>>()[1..].join(" ");
+                let encoding = content_encoding.unwrap()
+                    .to_string()
+                    .split_whitespace()
+                    .collect::<Vec<&str>>()[1..]
+                    .join(" ");
                 println!("{}", encoding);
-            if encoding == "gzip" {
+            if encoding.contains(&"gzip") {
                 // let mut decoder = flate2::read::GzDecoder::new(body_str.as_bytes());
                 // let mut decoded = String::new();
                 // decoder.read_to_string(&mut decoded).unwrap();
-                status_line = format!("HTTP/1.1 200 OK\r\nContent-Encoding: {}\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", encoding, path.len(), path);
+                status_line = format!("HTTP/1.1 200 OK\r\nContent-Encoding: {}\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", "gzip", path.len(), path);
             }}
         }
         if command == "user-agent" {
