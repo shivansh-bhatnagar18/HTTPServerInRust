@@ -21,6 +21,7 @@ fn main() {
         }
     }
 }
+
 pub fn handle_connection(mut stream: std::net::TcpStream) {
     let mut reader = BufReader::new(&mut stream);
     let mut http_request = String::new();
