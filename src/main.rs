@@ -1,7 +1,9 @@
 // Uncomment this block to pass the first stage
 use std::net::TcpListener;
 use std::io::{BufReader, BufRead, Write, Read};
-use std::fs;
+use std::{fs, io};
+use flate2::write::GzEncoder;
+use flate2::Compression;
 
 fn main() {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -73,10 +75,14 @@ pub fn handle_connection(mut stream: std::net::TcpStream) {
                     .join(" ");
                 println!("{}", encoding);
             if encoding.contains(&"gzip") {
-                // let mut decoder = flate2::read::GzDecoder::new(body_str.as_bytes());
-                // let mut decoded = String::new();
-                // decoder.read_to_string(&mut decoded).unwrap();
-                status_line = format!("HTTP/1.1 200 OK\r\nContent-Encoding: {}\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", "gzip", path.len(), path);
+                let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+                encoder.write_all(path.as_bytes()).unwrap();
+                let compressed = encoder.finish().unwrap();
+                status_line = format!("HTTP/1.1 200 OK\r\nContent-Encoding: {}\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n", "gzip", compressed.len());
+                let mut response = Vec::new();
+                response.extend_from_slice(status_line.as_bytes());
+                response.extend_from_slice(&compressed);
+                stream.write_all(&response).unwrap();
             }}
         }
         if command == "user-agent" {
