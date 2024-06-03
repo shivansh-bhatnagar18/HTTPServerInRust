@@ -22,8 +22,17 @@ fn main() {
     }
 }
 pub fn handle_connection(mut stream: std::net::TcpStream) {
-    let reader = BufReader::new(&mut stream);
-    let http_request = reader.lines().next().unwrap().unwrap();
+    let mut reader = BufReader::new(&mut stream);
+    let mut http_request = String::new();
+    reader.read_line(&mut http_request).unwrap();
+    let mut headers = Vec::new();
+    for line in reader.lines().skip(1) {
+        let line = line.unwrap();
+        if line.is_empty() {
+            break;
+        }
+        headers.push(line);
+    }
     let streq: Vec<&str> = http_request.split_whitespace().collect();
     let mut command = "".to_string();
     let mut path = "".to_string();
@@ -34,12 +43,18 @@ pub fn handle_connection(mut stream: std::net::TcpStream) {
         command = streq[1][1..].to_string();
     };
     println!("{} {}", command, path);
-    let mut status_line = match &http_request[..] {
-        "GET / HTTP/1.1" => "HTTP/1.1 200 OK\r\n\r\n".to_string(),
-        _ => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
-    };
+    let mut status_line: String = "HTTP/1.1 404 Not Found\r\n\r\n".to_string();
+    if command == "" {
+        status_line = "HTTP/1.1 200 OK\r\n\r\n".to_string();
+    }
     if command == "echo" {
         status_line = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", path.len(), path);
+    }
+    if command == "user-agent" {
+        let user_agent = headers.iter().find(|header| header.starts_with("User-Agent"));
+        let agent = user_agent.unwrap().to_string().split_whitespace().collect::<Vec<&str>>()[1..].join(" ");
+        println!("{}", agent);
+        status_line = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", agent.len(), agent);
     }
     stream
         .write_all(status_line.as_bytes())
