@@ -1,6 +1,7 @@
 // Uncomment this block to pass the first stage
 use std::net::TcpListener;
 use std::io::{BufReader, BufRead, Write};
+use std::fs;
 
 fn main() {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -43,7 +44,7 @@ pub fn handle_connection(mut stream: std::net::TcpStream) {
     } else {
         command = streq[1][1..].to_string();
     };
-    println!("{} {}", command, path);
+    println!("{}/{}", command, path);
     let mut status_line: String = "HTTP/1.1 404 Not Found\r\n\r\n".to_string();
     if command == "" {
         status_line = "HTTP/1.1 200 OK\r\n\r\n".to_string();
@@ -56,6 +57,20 @@ pub fn handle_connection(mut stream: std::net::TcpStream) {
         let agent = user_agent.unwrap().to_string().split_whitespace().collect::<Vec<&str>>()[1..].join(" ");
         println!("{}", agent);
         status_line = format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}", agent.len(), agent);
+    }
+    if command == "files" {
+        let env_args: Vec<String> = std::env::args().collect();
+        let mut dir = env_args[2].clone();
+        dir.push_str(&path);
+        let file = fs::read(dir);
+        match file {
+            Ok(fc) => {
+                status_line = format!("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\n\r\n{}\r\n", fc.len(), String::from_utf8(fc).expect("file content"));
+            }
+            Err(_) => {
+                status_line = "HTTP/1.1 404 Not Found\r\n\r\n".to_string();
+            }
+        }
     }
     stream
         .write_all(status_line.as_bytes())
